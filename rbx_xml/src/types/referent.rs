@@ -34,7 +34,10 @@ pub fn write_ref<W: Write>(
     if value.is_none() {
         writer.write(XmlWriteEvent::characters("null"))?;
     } else {
-        writer.write_characters(state.map_id(value))?;
+        let mapped_id = state.get_existing_referent(value)
+          .cloned()
+          .unwrap_or_else(|| state.map_id(value).to_string());
+        writer.write_characters(mapped_id)?;
     }
 
     writer.write(XmlWriteEvent::end_element())?;

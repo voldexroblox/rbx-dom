@@ -26,11 +26,25 @@ pub fn decode_internal<R: Read>(source: R, options: DecodeOptions) -> Result<Wea
     let mut state = ParseState::new(&mut tree, options);
 
     deserialize_root(&mut iterator, &mut state, root_id)?;
-    apply_referent_rewrites(&mut state);
-    apply_shared_string_rewrites(&mut state);
-    apply_net_asset_rewrites(&mut state);
+    apply_rewrites_internal(&mut state);
 
     Ok(tree)
+}
+
+/// Decodes an XML-format model or place using the given tree and state.
+/// Rewrites are not automatically applied.
+pub fn decode_internal_with_state<R: Read>(source: R, state: &mut ParseState, root_id: Ref) -> Result<(), DecodeError> {
+    let mut iterator = XmlEventReader::from_source(source);
+
+    deserialize_root(&mut iterator, state, root_id)?;
+
+    Ok(())
+}
+
+pub fn apply_rewrites_internal(state: &mut ParseState) {
+    apply_referent_rewrites(state);
+    apply_shared_string_rewrites(state);
+    apply_net_asset_rewrites(state);
 }
 
 /// Describes the strategy that rbx_xml should use when deserializing
@@ -168,7 +182,7 @@ struct HashRewrites {
 }
 
 impl<'dom, 'db> ParseState<'dom, 'db> {
-    fn new(tree: &'dom mut WeakDom, options: DecodeOptions<'db>) -> ParseState<'dom, 'db> {
+    pub fn new(tree: &'dom mut WeakDom, options: DecodeOptions<'db>) -> ParseState<'dom, 'db> {
         ParseState {
             tree,
             options,

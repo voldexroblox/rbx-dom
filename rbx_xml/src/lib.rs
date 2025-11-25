@@ -127,18 +127,27 @@ use std::io::{Read, Write};
 
 use rbx_dom_weak::{types::Ref, WeakDom};
 
-use crate::{deserializer::decode_internal, serializer::encode_internal};
+use crate::{
+    deserializer::{decode_internal, decode_internal_with_state, apply_rewrites_internal},
+    serializer::{encode_internal, encode_internal_with_state},
+};
 
 pub use crate::{
-    deserializer::{DecodeOptions, DecodePropertyBehavior},
+    deserializer::{DecodeOptions, DecodePropertyBehavior, ParseState},
     error::{DecodeError, EncodeError},
-    serializer::{EncodeOptions, EncodePropertyBehavior},
+    serializer::{EncodeOptions, EncodePropertyBehavior, EmitState},
 };
 
 /// Decodes an XML-format model or place from something that implements the
 /// `std::io::Read` trait.
 pub fn from_reader<R: Read>(reader: R, options: DecodeOptions) -> Result<WeakDom, DecodeError> {
     decode_internal(reader, options)
+}
+
+/// Decodes an XML-format model or place from something that implements the
+/// `std::io::Read` trait.
+pub fn from_reader_with_state<R: Read>(reader: R, state: &mut ParseState, root_id: Ref) -> Result<(), DecodeError> {
+    decode_internal_with_state(reader, state, root_id)
 }
 
 /// Decodes an XML-format model or place from something that implements the
@@ -158,6 +167,11 @@ pub fn from_str_default<S: AsRef<str>>(reader: S) -> Result<WeakDom, DecodeError
     decode_internal(reader.as_ref().as_bytes(), DecodeOptions::default())
 }
 
+/// Applies rewrites to the given state.
+pub fn apply_rewrites_with_state(state: &mut ParseState) {
+    apply_rewrites_internal(state);
+}
+
 /// Serializes a subset of the given tree to an XML format model or place,
 /// writing to something that implements the `std::io::Write` trait.
 pub fn to_writer<W: Write>(
@@ -167,6 +181,18 @@ pub fn to_writer<W: Write>(
     options: EncodeOptions,
 ) -> Result<(), EncodeError> {
     encode_internal(writer, tree, ids, options)
+}
+
+/// Serializes a subset of the given tree to an XML format model or place,
+/// writing to something that implements the `std::io::Write` trait. Allows for
+/// passing of existing emit state.
+pub fn to_writer_with_state<W: Write>(
+    writer: W,
+    tree: &WeakDom,
+    ids: &[Ref],
+    state: &mut EmitState,
+) -> Result<(), EncodeError> {
+    encode_internal_with_state(writer, tree, ids, state)
 }
 
 /// Serializes a subset of the given tree to an XML format model or place,
