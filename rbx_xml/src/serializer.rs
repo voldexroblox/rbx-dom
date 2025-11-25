@@ -22,17 +22,27 @@ pub fn encode_internal<W: Write>(
     ids: &[Ref],
     options: EncodeOptions,
 ) -> Result<(), NewEncodeError> {
-    let mut writer = XmlEventWriter::from_output(output);
     let mut state = EmitState::new(options);
+    encode_internal_with_state(output, tree, ids, &mut state)?;
+    Ok(())
+}
+
+pub fn encode_internal_with_state<W: Write>(
+    output: W,
+    tree: &WeakDom,
+    ids: &[Ref],
+    state: &mut EmitState,
+) -> Result<(), NewEncodeError> {
+    let mut writer = XmlEventWriter::from_output(output);
 
     writer.write(XmlWriteEvent::start_element("roblox").attr("version", "4"))?;
 
     let mut property_buffer = Vec::new();
     for id in ids {
-        serialize_instance(&mut writer, &mut state, tree, *id, &mut property_buffer)?;
+        serialize_instance(&mut writer, state, tree, *id, &mut property_buffer)?;
     }
 
-    serialize_shared_strings(&mut writer, &mut state)?;
+    serialize_shared_strings(&mut writer, state)?;
 
     writer.write(XmlWriteEvent::end_element())?;
 
@@ -114,12 +124,16 @@ impl<'db> Default for EncodeOptions<'db> {
     }
 }
 
+/// The state needed to serialize an XML model or place.
 pub struct EmitState<'db> {
     options: EncodeOptions<'db>,
 
     /// A map of IDs written so far to the generated referent that they use.
     /// This map is used to correctly emit Ref properties.
     referent_map: HashMap<Ref, u32>,
+
+    /// A map of existing IDs to their referents. This map is used to correctly emit Ref properties.
+    existing_referent_map: HashMap<Ref, String>,
 
     /// The referent value that will be used for emitting the next instance.
     next_referent: u32,
@@ -130,15 +144,18 @@ pub struct EmitState<'db> {
 }
 
 impl<'db> EmitState<'db> {
+    /// Creates a new `EmitState` with the given options.
     pub fn new(options: EncodeOptions<'db>) -> EmitState<'db> {
         EmitState {
             options,
             referent_map: HashMap::new(),
+            existing_referent_map: HashMap::new(),
             next_referent: 0,
             shared_strings_to_emit: BTreeMap::new(),
         }
     }
 
+    /// Maps an instance ID to a referent value.
     pub fn map_id(&mut self, id: Ref) -> u32 {
         match self.referent_map.get(&id) {
             Some(&value) => value,
@@ -151,8 +168,24 @@ impl<'db> EmitState<'db> {
         }
     }
 
+    /// Gets a referent for an existing instance ID.
+    pub fn get_existing_referent(&self, id: Ref) -> Option<&String> {
+        self.existing_referent_map.get(&id)
+    }
+
+    /// Adds an existing referent to the state.
+    pub fn add_existing_referent(&mut self, id: Ref, referent: String) {
+        self.existing_referent_map.insert(id, referent);
+    }
+
+    /// Adds a shared string to the state.
     pub fn add_shared_string(&mut self, value: SharedString) {
         self.shared_strings_to_emit.insert(value.hash(), value);
+    }
+
+    /// Resets the shared strings to emit.
+    pub fn reset_shared_strings(&mut self) {
+        self.shared_strings_to_emit.clear();
     }
 }
 
@@ -168,12 +201,12 @@ fn serialize_instance<'dom, W: Write>(
     property_buffer: &mut Vec<(&'dom str, &'dom Variant)>,
 ) -> Result<(), NewEncodeError> {
     let instance = tree.get_by_ref(id).unwrap();
-    let mapped_id = state.map_id(id);
+    let mapped_id = state.get_existing_referent(id).cloned().unwrap_or_else(|| state.map_id(id).to_string());
 
     writer.write(
         XmlWriteEvent::start_element("Item")
             .attr("class", &instance.class)
-            .attr("referent", &mapped_id.to_string()),
+            .attr("referent", &mapped_id),
     )?;
 
     writer.write(XmlWriteEvent::start_element("Properties"))?;
