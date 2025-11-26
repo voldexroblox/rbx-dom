@@ -129,6 +129,7 @@ impl<'db> Default for DecodeOptions<'db> {
 
 /// The state needed to deserialize an XML model into an `WeakDom`.
 pub struct ParseState<'dom, 'db> {
+    /// The tree that instances should be written into.
     pub tree: &'dom mut WeakDom,
 
     options: DecodeOptions<'db>,
@@ -182,6 +183,7 @@ struct HashRewrites {
 }
 
 impl<'dom, 'db> ParseState<'dom, 'db> {
+    /// Creates a new `ParseState` with the given tree and options.
     pub fn new(tree: &'dom mut WeakDom, options: DecodeOptions<'db>) -> ParseState<'dom, 'db> {
         ParseState {
             tree,
