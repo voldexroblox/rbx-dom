@@ -129,7 +129,7 @@ impl<'db> Default for DecodeOptions<'db> {
 
 /// The state needed to deserialize an XML model into an `WeakDom`.
 pub struct ParseState<'dom, 'db> {
-    tree: &'dom mut WeakDom,
+    pub tree: &'dom mut WeakDom,
 
     options: DecodeOptions<'db>,
 
