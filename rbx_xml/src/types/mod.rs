@@ -55,7 +55,7 @@ use crate::{
 };
 
 use self::{
-    attributes::write_attributes,
+    attributes::{read_attributes, write_attributes},
     material_colors::write_material_colors,
     net_asset_ref::{read_net_asset_ref, write_net_asset_ref},
     referent::{read_ref, write_ref},
@@ -90,6 +90,7 @@ macro_rules! declare_rbx_types {
                 self::referent::XML_TAG_NAME => Ok(Some(Variant::Ref(read_ref(reader, instance_id, property_name, state)?))),
                 self::shared_string::XML_TAG_NAME => read_shared_string(reader, instance_id, property_name, state).map(Some),
                 self::net_asset_ref::XML_TAG_NAME => read_net_asset_ref(reader, instance_id, property_name, state).map(Some),
+                self::attributes::XML_TAG_NAME => read_attributes(reader, state, instance_id).map(Some),
 
                 _ => {
                     state.unknown_type_visited(instance_id, property_name, xml_type_name);
