@@ -60,7 +60,7 @@ use self::{
     net_asset_ref::{read_net_asset_ref, write_net_asset_ref},
     referent::{read_ref, write_ref},
     shared_string::{read_shared_string, write_shared_string},
-    tags::write_tags,
+    tags::{read_tags, write_tags},
 };
 
 /// The `declare_rbx_types` macro generates the two big match statements that
@@ -90,6 +90,7 @@ macro_rules! declare_rbx_types {
                 self::referent::XML_TAG_NAME => Ok(Some(Variant::Ref(read_ref(reader, instance_id, property_name, state)?))),
                 self::shared_string::XML_TAG_NAME => read_shared_string(reader, instance_id, property_name, state).map(Some),
                 self::net_asset_ref::XML_TAG_NAME => read_net_asset_ref(reader, instance_id, property_name, state).map(Some),
+                self::tags::XML_TAG_NAME => read_tags(reader, state, instance_id).map(Some),
 
                 _ => {
                     state.unknown_type_visited(instance_id, property_name, xml_type_name);
